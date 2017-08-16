@@ -9,7 +9,6 @@ from xlrd import open_workbook
 from nltk.corpus import stopwords
 from nltk.stem.wordnet import WordNetLemmatizer
 import itertools
-from itertools import zip_longest
 '''
 for the swalign stuff, had to make some changes to the file to fix syntax
 like changing xrange to range and including print things in ()
@@ -522,7 +521,7 @@ def similar_phrase_matching(child_story,robot_story, min_match_count=1):
 
 def get_stories(child_story,robot_story): #enter file names and get the story strings
     storyr = [] #robot story lines
-    with (open(robot_story, encoding='cp437')) as z:
+    with open(robot_story, 'r') as z:
         x = z.read()
         for c in string.punctuation:
             x = x.replace(c, '')
@@ -534,7 +533,7 @@ def get_stories(child_story,robot_story): #enter file names and get the story st
     #print(robot_story_string)
 
     storyc = [] #child story lines
-    with open(child_story, encoding='cp437') as z:
+    with open(child_story, 'r') as z:
         lines = z.readlines()
         # print(lines)
         for i in range(len(lines)):
@@ -559,7 +558,7 @@ def matches(child_story_files_directory):
         for file in files:
             if file.endswith('.txt'):
                 # print(file)
-                child_story_files.append(file)
+                child_story_files.append(os.path.join(root,file))
 
     # kept only the conditions page from the Cyber4_Sheet excel file
     wb = open_workbook('Cyber4_Sheet_storyab.xlsx')
@@ -782,7 +781,7 @@ def main(argv):
     '''
 
     matches
-    child_story_files_directory = 'C:\\Users\Aradhana\wer\cyber4storytellingchild'
+    child_story_files_directory = './cyber4storytellingchild'
     matches(child_story_files_directory)
 
 
