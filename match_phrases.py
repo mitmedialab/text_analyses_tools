@@ -39,6 +39,11 @@ from xlrd import open_workbook
 from nltk.corpus import stopwords
 from nltk.stem.wordnet import WordNetLemmatizer
 import itertools
+
+import argparse # For getting command line args.
+
+
+
 '''
 for the swalign stuff, had to make some changes to the file to fix syntax
 like changing xrange to range and including print things in ()
@@ -821,5 +826,32 @@ def main(argv):
 
 
 if __name__ == "__main__":
-   main(sys.argv[1:])
+    """ Main function. Get args from the command line, find matching phrases in
+    the provided text files, print out the results.
+    """
+    # Args are:
+    # A text file containing a custom list of stopwords (one per line).
+    # One or more text files to match against.
+    # A list of text files to match.
+    # Optionally, a file to write the results to (otherwise printed to stdout).
+    description = """Given one or more text files to match against, find the
+            number of matching phrases in each of a provided list of text files,
+            and print the results. """
+
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("-s, --stopwords", type=str, dest="stopwords",
+            help="Text file containing custom stopwords, one per line")
+    parser.add_argument("-m, --match", required=True, action="append",
+            dest="match_files", help="""Text file to match against. Can specify
+            this argument more than once if you want to match against multiple
+            files.""")
+    parser.add_argument("-o, --outfile", dest="outfile", help="""A file to write
+            the results to (otherwise printed to stdout).""")
+    parser.add_argument("-c, --case-sensitive", dest="case_sensitive",
+            action="store_true", default=False, help="""Do case-sensitive phrase
+            matching. By default, the phrase matching is case-insensitive.""")
+    parser.add_argument("infiles", type=str, nargs="+", help="""One or more text
+            files to process.""")
+
+    args = parser.parse_args()
 
