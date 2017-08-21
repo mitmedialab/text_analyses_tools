@@ -28,18 +28,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import sys, os, getopt
+import sys
+import os
+import getopt
 import string
 import numpy
 import re
 from difflib import SequenceMatcher
 import swalign
 import fuzzywuzzy.fuzz
-from xlrd import open_workbook
-from nltk.corpus import stopwords
-from nltk.stem.wordnet import WordNetLemmatizer
-import itertools
-
+import nltk.corpus # To get list of stopwords.
+from nltk.stem.wordnet import WordNetLemmatizer # We lemmatize all words.
 import argparse # For getting command line args.
 
 
@@ -554,148 +553,48 @@ def similar_phrase_matching(child_story,robot_story, min_match_count=1):
 
 
 
-def get_stories(child_story,robot_story): #enter file names and get the story strings
-    storyr = [] #robot story lines
-    with open(robot_story, 'r') as z:
-        x = z.read()
-        for c in string.punctuation:
-            x = x.replace(c, '')
-        s = x.splitlines()
-        for ss in s:
-            if ss != '':
-                storyr.append(ss.lower())
-    robot_story_string = list_to_string(storyr)
-    #print(robot_story_string)
 
-    storyc = [] #child story lines
-    with open(child_story, 'r') as z:
-        lines = z.readlines()
-        # print(lines)
-        for i in range(len(lines)):
-            x = lines[i].rstrip('\n')
-            if x != '':
-                for c in string.punctuation:
-                    # if c=='.' or c=='?' or c==',' or c=='!':
-                    # x=x.replace(c,'$')
-                    x = x.replace(c, '')
-                storyc.append(x.lower())
-    child_story_string = list_to_string(storyc)
-    #print(child_story_string)
-    return(child_story_string,robot_story_string)
 
-def matches(child_story_files_directory):
-    stopwords_list = stopwords.words('english')
-    # more words to filter out on top of the default english stopwords in nltk
-    stopwords_list += ['theres', 'thats', 'wheres', 'uh', 'theyre', 'whe', 'da', 'l', 'boy', 'frog']
+def match_phrases(text1, text2):
+    """ Find matching phrases in the two provided strings. """
 
-    child_story_files = []
-    for root, dirs, files in os.walk(child_story_files_directory):
-        for file in files:
-            if file.endswith('.txt'):
-                # print(file)
-                child_story_files.append(os.path.join(root,file))
+    # getting long strings of child's story and robot's story
+    child_story0, robot_story0 = text1, text2
 
-    # kept only the conditions page from the Cyber4_Sheet excel file
-    wb = open_workbook('Cyber4_Sheet_storyab.xlsx')
-    for s in wb.sheets():
-        values = []
-        for row in range(s.nrows):
-            col_value = []
-            for col in range(s.ncols):
-                value = (s.cell(row, col).value)
-                try:
-                    value = str(int(value))
-                except:
-                    pass
-                col_value.append(value)
-            values.append(col_value)
-    values.pop(0)
-    #print(values)
-    emotion = []  # keeping track of emotional vs. flat
-    corresponding_robot_story_type = []  # keeping track of story A vs. B
-    for val in values:
-        if val[3] != '':
-            corresponding_robot_story_type.append(val[3])
-            emotion.append(val[4])
+    child_story_token = child_story0.split()
+    filtered_words1 = [word for word in child_story_token if word not in stopwords_list]
+    child_story = list_to_string(filtered_words1)
+    robot_story_token = robot_story0.split()
+    filtered_words2 = [word for word in robot_story_token if word not in stopwords_list]
+    robot_story = list_to_string(filtered_words2)
 
-    # tracking values for statistics
-    flat_exact_total = 0
-    flat_similar_total = 0
-    flat_count = 0
-    emotion_exact_total = 0
-    emotion_similar_total = 0
-    emotion_count = 0
+    print(child_story_file, robot_story_file, robot_emotion)
+    phrase_matching_file.write(child_story_file+' '+robot_story_file+' '+robot_emotion+'\n')
+    phrase_matching_file.write('\nEXACT PHRASE MATCHES:')
+    matches1 = exact_phrase_matching(child_story, robot_story) #can add in a third parameter for min length if you want to change it, 3 by default
 
-    # looping through the files to get matches
-    for i in range(len(child_story_files)):
-    #for i in range(3):
-        child_story_file = child_story_files[i]
-        robot_story_file = 'cyber4_robot_story_' + corresponding_robot_story_type[i] + '.txt'
-        robot_emotion = emotion[i]
-        # getting long strings of child's story and robot's story
-        child_story0, robot_story0 = get_stories(child_story_file, robot_story_file)
-        child_story_token = child_story0.split()
-        filtered_words1 = [word for word in child_story_token if word not in stopwords_list]
-        child_story = list_to_string(filtered_words1)
-        robot_story_token = robot_story0.split()
-        filtered_words2 = [word for word in robot_story_token if word not in stopwords_list]
-        robot_story = list_to_string(filtered_words2)
+    for m in matches1:
+        print(m)
+        phrase_matching_file.write(m)
+        phrase_matching_file.write('\n')
+    string_matches = 'Number of exact matches: ' + str(len(matches1))
 
-        print(child_story_file, robot_story_file, robot_emotion)
-        #print('Robot story: ',robot_story)
-        #print('Child story: ',child_story)
-        phrase_matching_file.write(child_story_file+' '+robot_story_file+' '+robot_emotion+'\n')
-        #phrase_matching_file.write('Robot story: '+robot_story+'\n')
-        #phrase_matching_file.write('Child story: '+child_story+'\n')
+    phrase_matching_file.write(string_matches)
+    phrase_matching_file.write('\n----------\n')
+    print('***************************************')
 
-        phrase_matching_file.write('\nEXACT PHRASE MATCHES:')
-        matches1 = exact_phrase_matching(child_story, robot_story) #can add in a third parameter for min length if you want to change it, 3 by default
-        for m in matches1:
-            print(m)
-            phrase_matching_file.write(m)
-            phrase_matching_file.write('\n')
-        string_matches = 'Number of exact matches: ' + str(len(matches1))
+    phrase_matching_file.write('\n\nSIMILAR PHRASE MATCHES:')
+    matches2 = similar_phrase_matching(child_story, robot_story) #can add in a third parameter to specify the min number of word matches for each phrase match, 1 by default
+    for m in matches2:
+        print(m)
+        phrase_matching_file.write(m[0] + ' || ' + m[1])
+        phrase_matching_file.write('\n')
+    string_matches2 = 'Number of similar matches: ' + str(len(matches2))
+    phrase_matching_file.write(string_matches2)
+    phrase_matching_file.write('\n----------\n')
 
-        phrase_matching_file.write(string_matches)
-        phrase_matching_file.write('\n----------\n')
-        print('***************************************')
 
-        phrase_matching_file.write('\n\nSIMILAR PHRASE MATCHES:')
-        matches2 = similar_phrase_matching(child_story, robot_story) #can add in a third parameter to specify the min number of word matches for each phrase match, 1 by default
-        for m in matches2:
-            print(m)
-            phrase_matching_file.write(m[0] + ' || ' + m[1])
-            phrase_matching_file.write('\n')
-        string_matches2 = 'Number of similar matches: ' + str(len(matches2))
-        phrase_matching_file.write(string_matches2)
-        phrase_matching_file.write('\n----------\n')
 
-        if robot_emotion == 'Flat':
-            flat_count += 1
-            flat_exact_total += len(matches1)
-            flat_similar_total += len(matches2)
-        else:  # if robot_emotion is 'Emotional'
-            emotion_count += 1
-            emotion_exact_total += len(matches1)
-            emotion_similar_total += len(matches2)
-
-        phrase_matching_file.write('\n\n#######################################################################\n')
-        print('##########################################################')
-    phrase_matching_file.write('\n\n')
-
-    flat_exact_average = flat_exact_total / flat_count
-    flat_similar_average = flat_similar_total / flat_count
-    emotional_exact_average = emotion_exact_total / emotion_count
-    emotional_similar_average = emotion_similar_total / emotion_count
-    print('flat exact average: ' + str(flat_exact_average))
-    print('flat similar average: ' + str(flat_similar_average))
-    print('emotional exact average: ' + str(emotional_exact_average))
-    print('emotional similar average: ' + str(emotional_similar_average))
-    phrase_matching_file.write('\nflat exact average: ' + str(flat_exact_average))
-    phrase_matching_file.write('\nflat similar average: ' + str(flat_similar_average))
-    phrase_matching_file.write('\nemotional exact average: ' + str(emotional_exact_average))
-    phrase_matching_file.write('\nemotional similar average: ' + str(emotional_similar_average))
-    phrase_matching_file.close()
 
 def text_alignments(argv,query_dir,ref_dir):
     result_dir = 'result/'
@@ -787,42 +686,26 @@ def text_alignments(argv,query_dir,ref_dir):
                     rst_file.write('\nERRORS: %d' % errors)
                     rst_file.write('\nWER: %.4f\n' % (errors/float(len(ref_line_filtered_split))))
 
-def main(argv):
-    # Testing individual file for matches
-    '''
-    child_story_file='CYBER4-P040-Y_2storytellingChanges.txt'
-    robot_story_file='cyber4_robot_story_B.txt'
 
 
-    child_story0, robot_story0 = get_stories(child_story_file, robot_story_file)
-    child_story_token = child_story0.split()
-    robot_story_token = robot_story0.split()
+def get_text(infile, case_sensitive):
+    """ Read in the text of the provided file, remove all punctuation, remove
+    extraneous whitespace, and make it all lowercase if the case-sensitive flag
+    is not set. Return a string containing the processed text.
+    """
+    # Open the file for reading.
+    with open(infile, "r") as f:
+        # Read the file contents.
+        contents = f.read()
 
-    stopwords_list = stopwords.words('english')
-    # more words to filter out on top of the default english stopwords in nltk
-    stopwords_list += ['theres', 'thats', 'wheres', 'uh', 'theyre', 'whe', 'da', 'l', 'boy', 'frog']
+    # Remove whitespace and replace with spaces.
+    contents = " ".join(contents.split().translate(None, string.punctuation))
 
-    filtered_words1 = [word for word in child_story_token if word not in stopwords_list]
-    child_story = list_to_string(filtered_words1)
-    filtered_words2 = [word for word in robot_story_token if word not in stopwords_list]
-    robot_story = list_to_string(filtered_words2)
+    # If we should be case-insensitive, make all words lowercase.
+    if not case_sensitive:
+        contents = contents.lower()
 
-    exact_matches2=exact_phrase_matching(child_story,robot_story)
-    for m in exact_matches2:
-        print(m)
-    similar_matches=similar_phrase_matching(child_story,robot_story)
-    for m in similar_matches:
-        print(m)
-    '''
-
-    matches
-    child_story_files_directory = './cyber4storytellingchild'
-    matches(child_story_files_directory)
-
-
-    # query_dir = "C:\\Users\Aradhana\wer\\res\\api_result"     # text to be aligned (e.g., result from speech api)
-    # ref_dir = "C:\\Users\Aradhana\wer\\res\\transcription"     # text to be aligned against (e.g., hand transcription)
-    # text_alignments(argv,query_dir,ref_dir)
+    return contents
 
 
 if __name__ == "__main__":
@@ -855,3 +738,36 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # Open stopword file and get the list of custom stopwords. We remove any
+    # punctuation and change to lowercase unless the case-sensitive flag is set.
+    stopwords = nltk.corpus.stopwords.words("english")
+    if args.stopwords:
+        with open(args.stopwords[0], "r") as f:
+            print "Reading custom stopword list..."
+            sw = f.readlines()
+            sw = [w.strip().translate(None, string.punctuation) for w in sw]
+            if not args.case_sensitive:
+                sw = [w.lower() for w in sw]
+            print "Custom stopwords: {}\nAdding to stopword list...".format(sw)
+            stopwords += sw
+
+    # Read in the text files to match against.
+    match = []
+    for mf in args.match_files:
+        match.append(get_text(mf))
+
+    # For each text file to match, find the phrase matching score for each of
+    # the text files to match against.
+    for infile in args.infiles:
+        # Open text file and read in text.
+        filename = os.path.splitext(os.path.basename(infile))[0]
+        text = get_text(infile)
+
+        # Do phrase matching.
+        for m in match:
+            match_phrases(text, m)
+            # TODO get results back, print them out.
+
+    # If there is an output file set, write the results to it. Otherwise, just
+    # print the results to stdout.
+    # TODO
