@@ -424,6 +424,7 @@ def exact_phrase_matching(child_story,robot_story, min_len=3):
 
 #split based on spaces in the child story alignment string
 def similar_phrase_matching(child_story,robot_story, min_match_count=1):
+    # TODO is there a minimum length of phrase to match?
 
     # alignment
     match = 3
@@ -547,47 +548,28 @@ def similar_phrase_matching(child_story,robot_story, min_match_count=1):
 
 
 
+def match_phrases(text1, text2, phrase_length):
+    """ Find matching phrases of at least the specified number of words in the
+    two provided strings.
+    """
+    print "Finding exact phrase matches, min length {}...".format(phrase_length)
+    exact_matches = exact_phrase_matching(text1, text2, min_len=phrase_length)
+    if len(exact_matches) < 1:
+        print "No exact matches found."
+    else:
+        print "Found {} exact matches!".format(len(exact_matches))
+        for m in exact_matches:
+            print "\t{}".format(m)
 
-
-def match_phrases(text1, text2):
-    """ Find matching phrases in the two provided strings. """
-
-    # getting long strings of child's story and robot's story
-    child_story0, robot_story0 = text1, text2
-
-    child_story_token = child_story0.split()
-    filtered_words1 = [word for word in child_story_token if word not in stopwords_list]
-    child_story = list_to_string(filtered_words1)
-    robot_story_token = robot_story0.split()
-    filtered_words2 = [word for word in robot_story_token if word not in stopwords_list]
-    robot_story = list_to_string(filtered_words2)
-
-    print(child_story_file, robot_story_file, robot_emotion)
-    phrase_matching_file.write(child_story_file+' '+robot_story_file+' '+robot_emotion+'\n')
-    phrase_matching_file.write('\nEXACT PHRASE MATCHES:')
-    matches1 = exact_phrase_matching(child_story, robot_story) #can add in a third parameter for min length if you want to change it, 3 by default
-
-    for m in matches1:
-        print(m)
-        phrase_matching_file.write(m)
-        phrase_matching_file.write('\n')
-    string_matches = 'Number of exact matches: ' + str(len(matches1))
-
-    phrase_matching_file.write(string_matches)
-    phrase_matching_file.write('\n----------\n')
-    print('***************************************')
-
-    phrase_matching_file.write('\n\nSIMILAR PHRASE MATCHES:')
-    matches2 = similar_phrase_matching(child_story, robot_story) #can add in a third parameter to specify the min number of word matches for each phrase match, 1 by default
-    for m in matches2:
-        print(m)
-        phrase_matching_file.write(m[0] + ' || ' + m[1])
-        phrase_matching_file.write('\n')
-    string_matches2 = 'Number of similar matches: ' + str(len(matches2))
-    phrase_matching_file.write(string_matches2)
-    phrase_matching_file.write('\n----------\n')
-
-
+    print "Finding similar phrase matches..."
+    # TODO min length for similar phrase matching too?
+    similar_matches = similar_phrase_matching(text1, text2)
+    if len(similar_matches) < 1:
+        print "No similar matches found."
+    else:
+        print "Found {} similar matches!".format(len(similar_matches))
+        for m in similar_matches:
+            print "\t{}".format(m)
 
 
 def text_alignments(argv,query_dir,ref_dir):
@@ -682,7 +664,7 @@ def text_alignments(argv,query_dir,ref_dir):
 
 
 
-def get_text(infile, case_sensitive):
+def get_text(infile, case_sensitive, stopwords):
     """ Read in the text of the provided file, remove all punctuation, remove
     extraneous whitespace, and make it all lowercase if the case-sensitive flag
     is not set. Return a string containing the processed text.
@@ -692,8 +674,12 @@ def get_text(infile, case_sensitive):
         # Read the file contents.
         contents = f.read()
 
-    # Remove whitespace and replace with spaces.
-    contents = " ".join(contents.split().translate(None, string.punctuation))
+    # Tokenize (naively, just split on whitespace) and remove stopwords.
+    # Remove extra whitespace via the split, and rejoin words with a space as
+    # the delimiter back into a single string.
+    contents = " ".join([word for word in \
+            contents.translate(None, string.punctuation).split() \
+            if word not in stopwords])
 
     # If we should be case-insensitive, make all words lowercase.
     if not case_sensitive:
@@ -729,6 +715,8 @@ if __name__ == "__main__":
             matching. By default, the phrase matching is case-insensitive.""")
     parser.add_argument("infiles", type=str, nargs="+", help="""One or more text
             files to process.""")
+    parser.add_argument("-p, --phrase-length", dest="phrase_length",
+            default=3, help="How many words to match when matching phrases")
 
     args = parser.parse_args()
 
@@ -736,7 +724,7 @@ if __name__ == "__main__":
     # punctuation and change to lowercase unless the case-sensitive flag is set.
     stopwords = nltk.corpus.stopwords.words("english")
     if args.stopwords:
-        with open(args.stopwords[0], "r") as f:
+        with open(args.stopwords, "r") as f:
             print "Reading custom stopword list..."
             sw = f.readlines()
             sw = [w.strip().translate(None, string.punctuation) for w in sw]
@@ -748,20 +736,21 @@ if __name__ == "__main__":
     # Read in the text files to match against.
     match = []
     for mf in args.match_files:
-        match.append(get_text(mf))
+        match.append(get_text(mf, args.case_sensitive, stopwords))
 
     # For each text file to match, find the phrase matching score for each of
     # the text files to match against.
     for infile in args.infiles:
         # Open text file and read in text.
         filename = os.path.splitext(os.path.basename(infile))[0]
-        text = get_text(infile)
+        text = get_text(infile, args.case_sensitive, stopwords)
 
         # Do phrase matching.
         for m in match:
-            match_phrases(text, m)
+            match_phrases(text, m, args.phrase_length)
             # TODO get results back, print them out.
 
     # If there is an output file set, write the results to it. Otherwise, just
     # print the results to stdout.
-    # TODO
+    # TODO Output should be: "a log list of matches, and a csv with the number
+    # of matches for each processed file"
