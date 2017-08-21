@@ -1,11 +1,59 @@
-# phrasematching
+# Phrase Matching
 
-Using text_sequence_alignment_matches for the phrase matches (exact and similar):
+Given one or more text files to match against, find and count matching phrases
+in one or more other text files. Print the results and optionally save the
+results to a file. Perform either a case-sensitive or case-insensitive match.
 
-	  1. Got Cyber4_Sheet_storyab.xlsx file by only keeping the conditions sheet in Cyber4_Sheet.xlsx.
-	  2. Change directory for the child storytelling files in the code's main function to the cyber4storytellingchild folder dir.
-	  3. Have the cyber4_robot_story_A.txt and cyber4_robot_story_B.txt files together with the text_sequence_alignment_matches.py file.
-	  4. Results will be printed on the console and matches.txt file.
-	  5. For exact matches, default number of words in a phrase is 3, 2 for similar matches.
-	     LongestSubstringFinder code from http://stackoverflow.com/questions/18715688/find-common-substring-between-two-strings
-    Note: Still need swalign setup from WER b/c this uses the alignment code too
+For exact phrase matches, the default number of words in a phrase is 3.
+
+For similar but not exact phrase matches, the default number of words in a
+phrase is 2.
+
+## Setup and dependencies
+
+### Python
+
+The following libraries are required (versions used for developing and testing
+listed in parantheses). You can `port install` or `pip install` or whatever
+depending on your preference for python library management.
+
+- swalign (v0.3.4)
+- fuzzywuzzy (may print a warning suggesting you optionally install
+  python-Levenshtein, v0.12.0) (v.0.15.1)
+- nltk (3.0.4\_0)
+
+### Version notes
+
+This program was developed and tested with:
+
+- Python 2.7.6
+- Mac OS X 10.10.5
+
+## Usage
+
+`match_phrases.py [-h] [-s, --stopwords STOPWORDS] -m, --match
+                        MATCH_FILES [-o, --outfile OUTFILE]
+                        [-c, --case-sensitive]
+                        infiles [infiles ...]`
+
+Given one or more text files to match against, find the number of matching
+phrases in each of a provided list of text files, and print the results.
+
+positional arguments:
+- infiles: One or more text files to process.
+
+optional arguments:
+- `-h, --help`: show this help message and exit
+- `-s, --stopwords STOPWORDS`: Text file containing custom stopwords, one per
+  line
+- `-m, --match MATCH_FILES`: Text file to match against. Can specify this
+  argument more than once if you want to match against multiple files.
+- `-o, --outfile OUTFILE`: A file to write the results to (otherwise printed to
+  stdout).
+- `-c, --case-sensitive`: Do case-sensitive phrase matching. By default, the
+  phrase matching is case-insensitive.
+
+## Bugs and issues
+
+Please report all bugs and issues on the [text_phrase_matching github issues
+page](https://github.com/mitmedialab/text_phrase_matching/issues).
