@@ -72,7 +72,7 @@ def aligned_query_filtering(original,query):
             regex=re.compile('-*')
             y[i]=regex.sub('', y[i])
             y[i]=y[i].ljust(lengths[i])
-    return list_to_string(y)
+    return " ".join(y)
 
 def aligned_ref_filtering(original, ref):
     y=ref.split()
@@ -95,14 +95,8 @@ def aligned_ref_filtering(original, ref):
             regex=re.compile('-*')
             y[i]=regex.sub('', y[i])
             y[i]=y[i].ljust(lengths[i])
-    return list_to_string(y)
+    return " ".join(y)
 
-
-def list_to_string(string_list):
-    s=''
-    for sr in string_list:
-        s+=sr+' '
-    return s.lstrip().rstrip()
 
 
 '''
@@ -503,11 +497,11 @@ def similar_phrase_matching(child_story,robot_story, min_match_count=1):
                 str2_split_filtered_noverbchange.append(word)
                 str2_split_filtered.append(word_stem)
 
-        str1_filtered_2 = list_to_string(str1_split_filtered)
-        str2_filtered_2 = list_to_string(str2_split_filtered)
+        str1_filtered_2 = " ".join(str1_split_filtered)
+        str2_filtered_2 = " ".join(str2_split_filtered)
 
-        str1_filtered_2noverbchange=list_to_string(str1_split_filtered_noverbchange)
-        str2_filtered_2noverbchange=list_to_string(str2_split_filtered_noverbchange)
+        str1_filtered_2noverbchange=" ".join(str1_split_filtered_noverbchange)
+        str2_filtered_2noverbchange=" ".join(str2_split_filtered_noverbchange)
 
 
         # using both fuzzywuzzy and the number of word matches in phrases for filtering
