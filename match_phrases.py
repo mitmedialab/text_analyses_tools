@@ -340,7 +340,9 @@ def substringsFinder(str1,str2,len_min=2):
 
 
 # split based on spaces in the robot story alignment string
-def exact_phrase_matching(child_story,robot_story, min_len=3):
+def exact_phrase_matching(text1, text2, min_len=3):
+    """ Find exact phrases matches between two texts, using a default minimum
+    phrase length of 3 (i.e., phrases must be 3 or more words). """
 
     #alignment
     match = 3
@@ -421,6 +423,7 @@ def exact_phrase_matching(child_story,robot_story, min_len=3):
         print('Exact matches:')
         phrase_matching_file.write('Exact matches: \n')
     return substring_matches
+
 
 #split based on spaces in the child story alignment string
 def similar_phrase_matching(child_story,robot_story, min_match_count=1):
@@ -547,31 +550,6 @@ def similar_phrase_matching(child_story,robot_story, min_match_count=1):
     return fuzzy_matches
 
 
-
-def match_phrases(text1, text2, phrase_length):
-    """ Find matching phrases of at least the specified number of words in the
-    two provided strings.
-    """
-    print "Finding exact phrase matches, min length {}...".format(phrase_length)
-    exact_matches = exact_phrase_matching(text1, text2, min_len=phrase_length)
-    if len(exact_matches) < 1:
-        print "No exact matches found."
-    else:
-        print "Found {} exact matches!".format(len(exact_matches))
-        for m in exact_matches:
-            print "\t{}".format(m)
-
-    print "Finding similar phrase matches..."
-    # TODO min length for similar phrase matching too?
-    similar_matches = similar_phrase_matching(text1, text2)
-    if len(similar_matches) < 1:
-        print "No similar matches found."
-    else:
-        print "Found {} similar matches!".format(len(similar_matches))
-        for m in similar_matches:
-            print "\t{}".format(m)
-
-
 def text_alignments(argv,query_dir,ref_dir):
     result_dir = 'result/'
 
@@ -661,6 +639,31 @@ def text_alignments(argv,query_dir,ref_dir):
                     rst_file.write('\n\n\ntotal words: %d' % len(ref_line_filtered_split))
                     rst_file.write('\nERRORS: %d' % errors)
                     rst_file.write('\nWER: %.4f\n' % (errors/float(len(ref_line_filtered_split))))
+
+
+
+def match_phrases(text1, text2, phrase_length):
+    """ Find matching phrases of at least the specified number of words in the
+    two provided strings.
+    """
+    print "Finding exact phrase matches, min length {}...".format(phrase_length)
+    exact_matches = exact_phrase_matching(text1, text2, min_len=phrase_length)
+    if len(exact_matches) < 1:
+        print "No exact matches found."
+    else:
+        print "Found {} exact matches!".format(len(exact_matches))
+        for m in exact_matches:
+            print "\t{}".format(m)
+
+    print "Finding similar phrase matches..."
+    # TODO min length for similar phrase matching too?
+    similar_matches = similar_phrase_matching(text1, text2)
+    if len(similar_matches) < 1:
+        print "No similar matches found."
+    else:
+        print "Found {} similar matches!".format(len(similar_matches))
+        for m in similar_matches:
+            print "\t{}".format(m)
 
 
 
