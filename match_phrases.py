@@ -682,7 +682,7 @@ def get_text(infile, case_sensitive, stopwords):
     # the delimiter back into a single string.
     contents = " ".join([word for word in \
             contents.translate(None, string.punctuation).split() \
-            if word not in stopwords])
+            if word.lower() not in stopwords])
 
     # If we should be case-insensitive, make all words lowercase.
     if not case_sensitive:
