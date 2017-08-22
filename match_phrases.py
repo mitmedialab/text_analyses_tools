@@ -28,535 +28,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import sys
-import os
-import getopt
-import string
-import numpy
-import re
-from difflib import SequenceMatcher
-import swalign
-import fuzzywuzzy.fuzz
+import os # For getting basenames and file extensions.
+import string # To use the punctuation list.
+import fuzzywuzzy.fuzz # For fuzzy string matching.
 import nltk.corpus # To get list of stopwords.
 from nltk.util import ngrams # To get ngrams from texts.
-from nltk.stem.wordnet import WordNetLemmatizer # We lemmatize all words.
+from nltk.stem.wordnet import WordNetLemmatizer # To lemmatize words.
 import argparse # For getting command line args.
 
 
-
-'''
-for the swalign stuff, had to make some changes to the file to fix syntax
-like changing xrange to range and including print things in ()
-'''
-
-phrase_matching_file=open('matches.txt',"w")
-
-
-def aligned_query_filtering(original,query):
-    y=query.split()
-    lengths=[]
-    for a in y:
-        x=len(a)
-        lengths.append(x)
-    for i in range(len(y)):
-        if y[i] not in original:
-
-            if y[i][0] is '-':
-                regex=re.compile('^-+')
-                y[i]=regex.sub('',y[i])
-                y[i]=y[i].rjust(lengths[i])
-            if y[i][-1] is '-':
-                regex=re.compile('-+$')
-                y[i]=regex.sub('',y[i])
-                y[i]=y[i].ljust(lengths[i])
-
-            regex=re.compile('-*')
-            y[i]=regex.sub('', y[i])
-            y[i]=y[i].ljust(lengths[i])
-    return " ".join(y)
-
-def aligned_ref_filtering(original, ref):
-    y=ref.split()
-    lengths=[]
-    for a in y:
-        x=len(a)
-        lengths.append(x)
-    for i in range(len(y)):
-        if y[i] not in original:
-
-            if y[i][0] is '-':
-                regex=re.compile('^-+')
-                y[i]=regex.sub('',y[i])
-                y[i]=y[i].rjust(lengths[i])
-            if y[i][-1] is '-':
-                regex=re.compile('-+$')
-                y[i]=regex.sub('',y[i])
-                y[i]=y[i].ljust(lengths[i])
-
-            regex=re.compile('-*')
-            y[i]=regex.sub('', y[i])
-            y[i]=y[i].ljust(lengths[i])
-    return " ".join(y)
-
-
-
-'''
-number of errors (deletion, insertion, substitution)
-----
-wer code below from https://martin-thoma.com/word-error-rate-calculation/
-'''
-def wer(r, h): #r and h are lists
-    # initialization
-    d = numpy.zeros((len(r)+1)*(len(h)+1), dtype=numpy.uint8)
-    d = d.reshape((len(r)+1, len(h)+1))
-    for i in range(len(r)+1):
-        for j in range(len(h)+1):
-            if i == 0:
-                d[0][j] = j
-            elif j == 0:
-                d[i][0] = i
-    # computation
-    for i in range(1, len(r)+1):
-        for j in range(1, len(h)+1):
-            if r[i-1] == h[j-1]:
-                d[i][j] = d[i-1][j-1]
-            else:
-                substitution = d[i-1][j-1] + 1
-                insertion    = d[i][j-1] + 1
-                deletion     = d[i-1][j] + 1
-                d[i][j] = min(substitution, insertion, deletion)
-
-    return d[len(r)][len(h)]
-
-def print_alignment(str1,str2, out, width=100):
-    l1=len(str1)
-    l2=len(str2)
-
-    i = 0
-    while i < min(l1,l2):
-        line1 = str1[i:min(i+width,l1)]
-        line2 = str2[i:min(i+width,l2)]
-
-        i += width
-
-        if min(i,l1-1,l2-1) is not i:
-            break
-
-        while str1[i] is not ' ' or str2[i] is not ' ':
-            line1 += str1[i]
-            line2 += str2[i]
-            i += 1
-            if min(i,l1-1,l2-1) is not i:
-                break
-
-        out.write(line1+'\n')
-        out.write(line2+'\n\n')
-
-#print to screen instead of cmd line?
-def print_alignment2(str1,str2, width=100):
-    l1=len(str1)
-    l2=len(str2)
-
-    i = 0
-    while i < min(l1,l2):
-        line1 = str1[i:min(i+width,l1)]
-        line2 = str2[i:min(i+width,l2)]
-
-        i += width
-
-        if min(i,l1-1,l2-1) is not i:
-            break
-
-        while str1[i] is not ' ' or str2[i] is not ' ':
-            line1 += str1[i]
-            line2 += str2[i]
-            i += 1
-            if min(i,l1-1,l2-1) is not i:
-                break
-
-        print(line1+'\n')
-        print(line2+'\n\n')
-
-def print_alignment_withSymbol(str1,str2, symbol, out, width=100):
-
-    reg = [' ','-']
-
-    l1=len(str1)
-    l2=len(str2)
-    l3=len(symbol)
-
-    i = 0
-    while i < min(l1,l2):
-        line1 = str1[i:min(i+width,l1)]
-        line2 = symbol[i:min(i+width,l3)]
-        line3 = str2[i:min(i+width,l2)]
-
-        i += width
-
-        if min(i,l1-1,l2-1) is not i:
-            break
-
-        while str1[i] not in reg or str2[i] not in reg:
-            line1 += str1[i]
-            line2 += symbol[i]
-            line3 += str2[i]
-            i += 1
-            if min(i,l1-1,l2-1) is not i:
-                break
-
-        out.write(line1+'\n')
-        out.write(line2+'\n')
-        out.write(line3+'\n\n')
-
-def print_alignment_withSymbol2(str1,str2, symbol, width=100):
-
-    reg = [' ','-']
-
-    l1=len(str1)
-    l2=len(str2)
-    l3=len(symbol)
-
-    i = 0
-    while i < min(l1,l2):
-        line1 = str1[i:min(i+width,l1)]
-        line2 = symbol[i:min(i+width,l3)]
-        line3 = str2[i:min(i+width,l2)]
-
-        i += width
-
-        if min(i,l1-1,l2-1) is not i:
-            break
-
-        while str1[i] not in reg or str2[i] not in reg:
-            line1 += str1[i]
-            line2 += symbol[i]
-            line3 += str2[i]
-            i += 1
-            if min(i,l1-1,l2-1) is not i:
-                break
-
-        print(line1+'\n')
-        print(line2+'\n')
-        print(line3+'\n\n')
-
-'----------------------------------------------------------------------'
-
-def trim_query_lines(dir, query_lines, align_parser):
-    # create result and directory
-    if not os.path.exists(dir):
-        os.makedirs(dir)
-
-    for i in range(len(query_lines)-1):
-        alignment = align_parser.align(query_lines[i],query_lines[i+1])
-        alignment.dump()
-
-
-#http://stackoverflow.com/questions/18715688/find-common-substring-between-two-strings
-def longestSubstringFinder(str1, str2):
-    answer = ""
-
-    if len(str1) == len(str2):
-        if str1==str2:
-            return str1
-        else:
-            longer=str1
-            shorter=str2
-    elif (len(str1) == 0 or len(str2) == 0):
-        return ""
-    elif len(str1)>len(str2):
-        longer=str1
-        shorter=str2
-    else:
-        longer=str2
-        shorter=str1
-
-    matrix = numpy.zeros((len(shorter), len(longer)))
-
-    for i in range(len(shorter)):
-        for j in range(len(longer)):
-            if shorter[i]== longer[j]:
-                matrix[i][j]=1
-
-    longest=0
-
-    start=[-1,-1]
-    end=[-1,-1]
-    for i in range(len(shorter)-1, -1, -1):
-        for j in range(len(longer)):
-            count=0
-            begin = [i,j]
-            while matrix[i][j]==1:
-
-                finish=[i,j]
-                count=count+1
-                if j==len(longer)-1 or i==len(shorter)-1:
-                    break
-                else:
-                    j=j+1
-                    i=i+1
-
-            i = i-count
-            if count>longest:
-                longest=count
-                start=begin
-                end=finish
-                break
-
-    answer=shorter[int(start[0]): int(end[0])+1]
-    return answer
-
-def substringsFinder(str1,str2,len_min=2):
-    substrings = []
-    #rsplit(' ',1)[0] to help filter out cut off words
-    #example: s taken out of stuck b/c it matched 'his head s' for 'his head so' and 'his head stuck'
-    x = longestSubstringFinder(str1+' ', str2+' ').rsplit(' ',1)[0]
-    x=re.sub('^..? ','',x).strip() #filtering up to two length word from the beginning of the phrase, hoping more cut off words are handeled with this
-
-
-    #this line seems like it might be an issue later with the len_min(maybe??)
-    while len(x) >= len_min:
-        substrings.append(x)
-        #print(x)
-
-        str1 = re.sub(x, ' ', str1)
-        str2 = re.sub(x, ' ', str2)
-        #print(str1)
-        #print(str2)
-        x = longestSubstringFinder(str1, str2).rsplit(' ',1)[0]
-
-    output=[]
-    for s in substrings:
-        ss=re.sub('  +','',s).strip()
-        #print(ss)
-        if ss!='' and len(ss)>=len_min:
-            output.append(ss)
-    output2=[]
-    for i in range(len(output)):
-        tokenized=output[i].split()
-        #print(tokenized)
-        length=len(tokenized)
-        if length>=len_min:
-            output2.append(output[i])
-    return(output2)
-
-
-def similar_phrase_matching(child_story,robot_story, min_match_count=1):
-    # TODO is there a minimum length of phrase to match?
-
-    # alignment
-    match = 3
-    mismatch = -1
-    scoring = swalign.NucleotideScoringMatrix(match, mismatch)
-    sw = swalign.LocalAlignment(scoring, -1.5, -.4)  # you can also choose gap penalties, etc...
-    # can play around with values of match, mismatch, and the gaps parameters in localalignment
-
-    alignment = sw.align(child_story, robot_story)
-    # x=alignment.dump()
-    x = alignment.match()  # x[0] is robot x[1] is child
-
-    robot_align = aligned_ref_filtering(robot_story, x[0])
-    child_align = aligned_query_filtering(child_story, x[1])
-
-
-    # split based on child align
-    # if you want to change the splitting to be based on robot align, then replace 'child' with 'robot' and vice versa on this part of the code
-    # until you get to matches
-    child_align_split = re.split("   +", child_align)
-    child_split_index = [0]
-    prev_index = 0
-    for phrase in child_align_split:
-        index = child_align[prev_index:].find(phrase)
-        prev_index += len(phrase) + index
-        child_split_index.append(prev_index)
-    robot_align_split = []
-    index_tracker = child_split_index
-    start_ind = index_tracker[0]
-    end_ind = index_tracker[1]
-    # trying to handle split between sentences (or was it words? i forgot...) with the end_ind_space
-    end_ind_space=0
-    if len(child_split_index)>2:
-        for index in child_split_index[:-2]:
-            end_ind_space=robot_align.index(" ",end_ind-1)
-            phrase=robot_align[start_ind:end_ind_space]
-            robot_align_split.append(phrase)
-            index_tracker.pop(0)
-            start_ind=end_ind_space
-            end_ind=index_tracker[1]
-        robot_align_split.append(robot_align[end_ind_space:])
-
-    else:
-        robot_align_split.append(robot_align)
-
-
-    #geting the matches
-    fuzzy_matches = []
-
-    for i in range(len(robot_align_split)):
-        str1 = child_align_split[i]
-        str2 = robot_align_split[i]
-
-        str1_split=re.split(" ", str1) #child words
-        str2_split=re.split(" ", str2) #robot words
-        str1_split_filtered=[]
-        str1_split_filtered_noverbchange=[]
-        str2_split_filtered=[]
-        str2_split_filtered_noverbchange = []
-
-        # make some changes to verbs
-        change_stem=WordNetLemmatizer()
-        for word in str1_split:
-            if word!='':
-                word_stem =change_stem.lemmatize(word,'v')
-                str1_split_filtered_noverbchange.append(word)
-                str1_split_filtered.append(word_stem)
-        for word in str2_split:
-            if word!='':
-                word_stem = change_stem.lemmatize(word,'v')
-                str2_split_filtered_noverbchange.append(word)
-                str2_split_filtered.append(word_stem)
-
-        str1_filtered_2 = " ".join(str1_split_filtered)
-        str2_filtered_2 = " ".join(str2_split_filtered)
-
-        str1_filtered_2noverbchange=" ".join(str1_split_filtered_noverbchange)
-        str2_filtered_2noverbchange=" ".join(str2_split_filtered_noverbchange)
-
-
-        # using both fuzzywuzzy and the number of word matches in phrases for filtering
-        fuzzy = fuzzywuzzy.fuzz.token_sort_ratio(str1_filtered_2,str2_filtered_2)
-
-        #the number can be increased/decreased for more/less filtering of similarity of phrases
-        if fuzzy > 45 :
-            match_count=0
-            len2=len(str2_split_filtered)
-            len1=len(str1_split_filtered)
-
-            for word in str2_split_filtered:
-                if len(str1_split_filtered)!= 0:
-                    if word in str1_split_filtered:
-                        str1_split_filtered.remove(word)
-                        match_count+=1
-
-            # increase/decrease number for more/less filtering
-            #currently need atleast 2 words matching, so 2 words is min length too
-            if match_count>min_match_count:
-
-                fuzzy_matches.append((str2_filtered_2, re.sub('  +', ' ', str1_filtered_2), len2, len1, match_count, fuzzy))
-                similar1=str2_filtered_2
-                similar2=re.sub('  +', ' ', str1_filtered_2)
-
-                phrase_matching_file.write('\n')
-                phrase_matching_file.write(str1_filtered_2noverbchange)
-                phrase_matching_file.write('\n')
-                phrase_matching_file.write(str2_filtered_2noverbchange)
-                phrase_matching_file.write('\n')
-                phrase_matching_file.write('similar match: ')
-                phrase_matching_file.write(similar1+' || '+similar2)
-                phrase_matching_file.write('\n')
-
-    phrase_matching_file.write('\n----------\n')
-    if len(fuzzy_matches)==0:
-        print('No similar phrases found~')
-        phrase_matching_file.write('No similar phrases found~\n')
-    else:
-        print('Similar phrases:')
-        phrase_matching_file.write('Similar phrases:\n')
-    return fuzzy_matches
-
-
-def text_alignments(argv,query_dir,ref_dir):
-    result_dir = 'result/'
-
-    # punctuation
-    regex = re.compile('[%s]' % re.escape(string.punctuation))
-
-    match = 3
-    mismatch = -1
-    scoring = swalign.NucleotideScoringMatrix(match, mismatch)
-    sw = swalign.LocalAlignment(scoring,-1.5,-.4)   # you can also choose gap penalties, etc...
-                                                    # can play around with values of match, mismatch, and the gaps parameters in localalignment
-
-    try:
-        opts, args = getopt.getopt(argv,"hq:r:",["queryDir=","refDir="])
-    except getopt.GetoptError:
-        print ('text_alignment.py -q <query_dir> -r <ref_dir>')
-        sys.exit(2)
-
-    for opt, arg in opts:
-        if opt == '-h':
-            print ('text_alignment.py -q <query_dir> -r <ref_dir>')
-            sys.exit()
-        elif opt in ("-q", "--queryDir"):
-            query_dir = arg
-        elif opt in ("-r", "--refDir"):
-            ref_dir = arg
-
-    print ('Query Directory is ', query_dir)
-    print ('Reference Directory is ', ref_dir)
-
-    # create result and directory
-    if not os.path.exists(result_dir):
-        os.makedirs(result_dir)
-
-    #
-    for root, subdirs, files in os.walk(query_dir):
-
-        for filename in files:
-
-            if filename.endswith('txt'):
-                query_file_path = os.path.join(root, filename)
-                print (query_file_path)
-                ref_file_path = os.path.join(ref_dir, filename.replace('transcript','groundtruth'))
-                print (ref_file_path)
-                rst_file_path = os.path.join(result_dir, filename.replace('transcript','result'))
-
-                #query_lines=[]
-                query_line=''
-                ref_line=''
-                with open(query_file_path, 'r') as query_file, open(ref_file_path, 'r') as ref_file, open(rst_file_path, 'w+') as rst_file:
-
-                    for line in query_file:
-                        line = re.split(';', line)
-                        line = regex.sub('', line[0]).rstrip().lower()
-                        query_line += line + ' '
-                        #query_lines.append(line)
-
-                    #trim_query_lines('query_trimmed', query_lines, sw)
-
-
-                    for line in ref_file:
-                        line = regex.sub('', line).rstrip().lower()
-                        ref_line += line + ' '
-
-
-                    #print query_line
-                    #print ref_line
-
-                    alignment=sw.align(query_line,ref_line)
-                    x=alignment.match() #x[0] corresponding with ref_line, x[1] corresponding with query_line
-
-                    print('****************************************************************')
-
-                    #print_alignment_withSymbol(x[0],x[1],x[2],sys.stdout)
-                    #print_alignment(x[0],x[1],sys.stdout)
-
-                    # changed a and aa to be ref_line_filtered and ref_line_filtered_split
-                    # changed b and bb to be query_line_filtered and query_line_filtered_split
-                    # changed aligned_act_filtering name to aligned_ref_filtering
-                    # changed aligned_rec_filtering name to aligned_query_filtering
-                    ref_line_filtered=aligned_ref_filtering(ref_line, x[0])
-                    query_line_filtered=aligned_query_filtering(query_line, x[1])
-                    print_alignment(ref_line_filtered,query_line_filtered,rst_file)
-                    query_line_filtered_split=query_line_filtered.split()
-                    ref_line_filtered_split=ref_line_filtered.split()
-                    errors=wer(query_line_filtered_split,ref_line_filtered_split)
-                    rst_file.write('\n\n\ntotal words: %d' % len(ref_line_filtered_split))
-                    rst_file.write('\nERRORS: %d' % errors)
-                    rst_file.write('\nWER: %.4f\n' % (errors/float(len(ref_line_filtered_split))))
-
-
-
-def ngrams_matching(text1, text2, n=3):
+def get_ngrams_matches(text1, text2, n=3):
     """ Find matching ngrams (i.e., phrases of N words) between two texts. We
     use a default of N=3 because a smaller N (e.g. N=2) often retains too
     little information to be considered actual phrase matching, while larger N
@@ -591,10 +72,76 @@ def ngrams_matching(text1, text2, n=3):
     return matches
 
 
-def match_phrases(text1, text2, phrase_length):
-    """ Find matching phrases of at least the specified number of words in the
-    two provided strings.
+def get_fuzzy_matches(text1, text2, n=4, threshold=80):
+    """ Find similar ngrams between two texts. Since we are using fuzzy string
+    matching rather than exact matching, we probably want to use a larger N so
+    that we have more words to consider as part of a phrase -- that way, they
+    are a word off, or use a different word in the middle of a similar phrase,
+    they will still match. We use a default of N=4, but the user can set this
+    to whatever they feel is appropriate.
+
+    The threshold value for fuzzy string matching is arbitrarily set to 80
+    (this fuzzy match score can range from 0-100) and should be adjusted by the
+    user for their particular dataset. A higher value indicates more similar
+    strings.
     """
+    ngrams1 = set(ngrams(text1.split(), n))
+    ngrams2 = list(ngrams(text2.split(), n))
+
+    # TODO lemmatize words first to make this fuzzier...
+
+    # Count fuzzy-matched occurrences of each ngram from text1 in text2. Save
+    # a nicely formatted list of the ngrams that matched for printing out later.
+    matches = 0
+    matches_to_print = []
+
+    for ng1 in ngrams1:
+        for ng2 in ngrams2:
+            f = fuzzywuzzy.fuzz.token_sort_ratio(ng1, ng2)
+            if f > 80:
+                matches += 1
+                matches_to_print.append("\t{}\t{} ~~ {}".format(f, ng1, ng2))
+    return matches, matches_to_print
+
+
+def get_overall_similarity(text1, text2):
+    """ Get the overall similarity between the two texts. """
+    print "Computing overall similarity between texts..."
+
+    # Get each text's length, the difference in lengths, and the length ratio.
+    len1 = len(text1.split())
+    len2 = len(text2.split())
+    print "\tLength Text 1: {}\n\tLength Text 2: {}".format(len1, len2)
+    print "\tLength difference: {}\n\tLength ratio: {}".format(len1-len2,
+            float(len1)/len2)
+
+    # Compare the number of unique words in each story.
+    uniq1 = len(set(text1.split()))
+    uniq2 = len(set(text2.split()))
+    print "\tUnique words Text 1: {}\n\tUnique words Text 2: {}".format(uniq1,
+            uniq2)
+    print "\tUnique words difference: {}\n\tUnique words ratio: {}".format(
+                    (uniq1-uniq2), float(uniq1)/uniq2)
+
+    # The fuzzywuzzy library has four different string comparison ratios that it
+    # can calculate, so we get all of them.
+    print "\tSimple fuzzy ratio: {}".format(fuzzywuzzy.fuzz.ratio(text1,text2))
+    print "\tPartial fuzzy ratio: {}".format(
+            fuzzywuzzy.fuzz.partial_ratio(text1,text2))
+    print "\tToken sort fuzzy ratio: {}".format(
+            fuzzywuzzy.fuzz.token_sort_ratio(text1,text2))
+    print "\tToken set fuzzy ratio: {}".format(
+            fuzzywuzzy.fuzz.token_set_ratio(text1,text2))
+
+
+def match_texts(text1, text2, n, fuzzy_n, fuzzy_threshold):
+    """ Find matching phrases of at least the specified number of words in the
+    two provided strings. Compute some other text similarity scores, including
+    several fuzzy string matching ratios.
+    """
+    # Get overall similarity scores for the two texts.
+    get_overall_similarity(text1, text2)
+
     # Use ngram matching to find exact matching phrases of length N. This will
     # produce duplicate matches for any phrases longer than length N, but still
     # generates the general results we're looking for, i.e., higher match scores
@@ -606,26 +153,38 @@ def match_phrases(text1, text2, phrase_length):
     #   - etc.
     # The sum of these scores is the total match score. You get a higher score
     # for more total matches, as well as for longer matching phrases.
-    print "Looking for exact phrase matches..."
-    exact_matches = ngrams_matching(text1, text2, n=phrase_length)
+    print "Looking for exact phrase matches with N={}...".format(n)
+    exact_matches = get_ngrams_matches(text1, text2, n=n)
     # Print the results of the matching.
     if len(exact_matches) < 1:
-        print "No exact matches found."
+        print "\tNo exact matches found."
     else:
-        print "Found {} exact matches!".format(len(exact_matches))
+        print "\tFound {} exact matches:".format(len(exact_matches))
+        print "\t--------------------------------------------------------"
+        print "\tMatches\tNgram"
+        print "\t--------------------------------------------------------"
         for m in exact_matches:
-            print "\t{}".format(m)
+            print "\t{}\t{}".format(exact_matches[m], m)
 
-    # Next, find similar matches using fuzzy string matching... TODO
-    print "Looking for similar phrase matches..."
-    # TODO min length for similar phrase matching too?
-    similar_matches = similar_phrase_matching(text1, text2)
-    if len(similar_matches) < 1:
-        print "No similar matches found."
+    # Next, find similar matches using fuzzy string matching. This is also based
+    # on ngrams. It uses a larger N and fuzzy string matching to compare the
+    # ngrams to each other, so ngrams that are not exactly the same can still
+    # match (e.g., if they are a word off, or if the words are in a different
+    # order).
+    print "Looking for similar phrase matches with N={}...".format(fuzzy_n)
+    print "Similar phrases must have fuzzy match scores above {} to be " + \
+            "counted!".format(fuzzy_threshold)
+    num_similar_matches, similar_matches = get_fuzzy_matches(text1, text2,
+            n=fuzzy_n, threshold=fuzzy_threshold)
+    if num_similar_matches < 1:
+        print "\tNo similar matches found."
     else:
-        print "Found {} similar matches!".format(len(similar_matches))
+        print "\tFound {} similar matches:".format(num_similar_matches)
+        print "\t--------------------------------------------------------"
+        print "\tScore\tText 1 ~~ Text 2"
+        print "\t--------------------------------------------------------"
         for m in similar_matches:
-            print "\t{}".format(m)
+            print m
 
 
 def get_text(infile, case_sensitive, stopwords):
@@ -679,8 +238,14 @@ if __name__ == "__main__":
             matching. By default, the phrase matching is case-insensitive.""")
     parser.add_argument("infiles", type=str, nargs="+", help="""One or more text
             files to process.""")
-    parser.add_argument("-p, --phrase-length", dest="phrase_length",
-            default=3, help="How many words to match when matching phrases")
+    parser.add_argument("-n, --n", dest="n", default=3,
+            help="How many words to match when matching phrases.")
+    parser.add_argument("-f, --fuzzy-n", dest="fuzzy_n", default=4,
+            help="How many words to match when fuzzy matching phrases.")
+    parser.add_argument("-t, --fuzzy_threshold", dest="fuzzy_threshold",
+            default=80, help="""The threshold over which fuzzy string matches
+            must be to be counted as a match (higher is more similar, max 100).
+            """)
 
     args = parser.parse_args()
 
@@ -698,12 +263,11 @@ if __name__ == "__main__":
             stopwords += sw
 
     # Read in the text files to match against.
-    print "Going to match against phrases of length N={} from the following " +\
-           "files:".format(args.phrase_length)
-    match = []
+    print "Going to match against the following files:".format(args.n)
+    match = {}
     for mf in args.match_files:
         print "\t{}".format(os.path.basename(mf))
-        match.append(get_text(mf, args.case_sensitive, stopwords))
+        match[os.path.basename(mf)] = get_text(mf, args.case_sensitive, stopwords)
 
 
     # For each text file to match, find the phrase matching score for each of
@@ -711,12 +275,13 @@ if __name__ == "__main__":
     for infile in args.infiles:
         # Open text file and read in text.
         filename = os.path.splitext(os.path.basename(infile))[0]
-        print "\nProcessing \"{}\"...".format(os.path.basename(infile))
         text = get_text(infile, args.case_sensitive, stopwords)
 
         # Do phrase matching.
         for m in match:
-            match_phrases(text, m, args.phrase_length)
+            print "\nComparing \"{}\" (text 1) to \"{}\" (text 2)...".format(
+                    os.path.basename(infile), m)
+            match_texts(text, match[m], args.n, args.fuzzy_n, args.fuzzy_threshold)
             # TODO get results back, print them out.
 
     # If there is an output file set, write the results to it. Otherwise, just

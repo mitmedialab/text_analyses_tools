@@ -53,6 +53,15 @@ optional arguments:
 - `-c, --case-sensitive`: Do case-sensitive phrase matching. By default, the
   phrase matching is case-insensitive.
 
+### Overall text similarity
+
+A couple overall text similarity metrics are computed first. These include:
+
+- Text length
+- Number of unique words in each text
+- Several ratios from a fuzzy string matching library ([details
+  here](http://chairnerd.seatgeek.com/fuzzywuzzy-fuzzy-string-matching-in-python/)).
+
 ### Matching details
 
 There are two phrase matching scores you can get: exact matches and similar
@@ -61,6 +70,10 @@ have the same words in the same order in both texts for it to count as a match.
 Similar matches use fuzzy string matching algorithms to find and count similar
 phrases -- so they might be worded a little differently in one text than in the
 other.
+
+In both cases, the first thing that happens is stopword removal and extraneous
+whitespace removal. If you set the case-sensitive flag, that's it; otherwise,
+everything is coverted to lowercase.
 
 #### Exact matching
 
@@ -79,7 +92,10 @@ The matching works like this:
 3. Count how many ngrams are the same in both texts.
 4. Return that number as the match score.
 
-This matching does produce duplicate matches for any phrases longer than length N; however, as a result it generates higher match scores for texts that have both more matching phrases and longer matching phrases. You can think of the match scoring like this:
+This matching does produce duplicate matches for any phrases longer than length
+N; however, as a result it generates higher match scores for texts that have
+both more matching phrases and longer matching phrases. You can think of the
+match scoring like this:
 
 - Score 1 for each matching phrase of length N.
 - Score 2 for each matching phrase of length N+1.
@@ -90,7 +106,18 @@ The total match score is the sum of all these.
 
 #### Similar matching
 
-TODO
+Similar matching also uses an ngram-based method to find similar ngrams between
+texts. However, since we match ngrams in a fuzzy way (they don't have to be
+exactly the same), we use a slightly larger N by default (N=4). That way, when
+phrases are a word off, or use a different word in the middle of a similar
+phrase, they will still match. But you can set this to whatever you think is
+appropriate.
+
+You can also pass in a threshold value for fuzzy string matching. The fuzzy
+string matching returns a value from 0-100 for how similar two strings are. A
+higher value indicates more similar strings. We arbitrarily set the default
+threshold to 80. This should be adjusted for your particular dataset.
+
 
 ## Bugs and issues
 
