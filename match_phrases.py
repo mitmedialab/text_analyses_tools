@@ -38,6 +38,7 @@ from difflib import SequenceMatcher
 import swalign
 import fuzzywuzzy.fuzz
 import nltk.corpus # To get list of stopwords.
+from nltk.util import ngrams # To get ngrams from texts.
 from nltk.stem.wordnet import WordNetLemmatizer # We lemmatize all words.
 import argparse # For getting command line args.
 
@@ -339,93 +340,6 @@ def substringsFinder(str1,str2,len_min=2):
     return(output2)
 
 
-# split based on spaces in the robot story alignment string
-def exact_phrase_matching(text1, text2, min_len=3):
-    """ Find exact phrases matches between two texts, using a default minimum
-    phrase length of 3 (i.e., phrases must be 3 or more words). """
-
-    #alignment
-    match = 3
-    mismatch = -1
-    scoring = swalign.NucleotideScoringMatrix(match, mismatch)
-    sw = swalign.LocalAlignment(scoring, -1.5, -.4)  # you can also choose gap penalties, etc...
-    # can play around with values of match, mismatch, and the gaps parameters in localalignment
-    alignment = sw.align(child_story, robot_story)
-    # x=alignment.dump()
-    x = alignment.match()  # x[0] is robot x[1] is child
-    # print(x[0])
-    robot_align = aligned_ref_filtering(robot_story, x[0])
-    child_align = aligned_query_filtering(child_story, x[1])
-
-
-
-    # split based on robot align
-    # if you want to change the splitting to be based on child align, then replace 'robot' with 'child' and vice versa on this part of the code
-    # until you get to matches
-    robot_align_split = re.split("   +", robot_align)
-    robot_split_index = [0]
-    prev_index = 0
-    for phrase in robot_align_split:
-        index = robot_align[prev_index:].find(phrase)
-        prev_index += len(phrase) + index
-        robot_split_index.append(prev_index)
-    child_align_split = []
-
-    index_tracker = robot_split_index
-    start_ind = index_tracker[0]
-    end_ind = index_tracker[1]
-    # trying to handle split between sentences (or was it words? i forgot...) with the end_ind_space
-    end_ind_space = 0
-    if len(robot_split_index) > 2:
-        for index in robot_split_index[:-2]:
-            end_ind_space = child_align.index(" ", end_ind - 1)
-            phrase = child_align[start_ind:end_ind_space]
-            child_align_split.append(phrase)
-            index_tracker.pop(0)
-            start_ind = end_ind_space
-            end_ind = index_tracker[1]
-        child_align_split.append(child_align[end_ind_space:])
-    else:
-        #else it's one huge string
-        child_align_split.append(child_align)
-
-
-    #getting the matches
-    substring_matches=[]
-
-    for i in range(len(robot_align_split)):
-
-        str1=child_align_split[i]
-        str2=robot_align_split[i]
-
-        x=substringsFinder(str1,str2,min_len)
-        #print(x)
-        if len(x)!=0:
-            phrase_matching_file.write('\nstr1: ')
-            phrase_matching_file.write(str1)
-            phrase_matching_file.write('\nstr2: ')
-            phrase_matching_file.write(str2)
-            phrase_matching_file.write('\n')
-            phrase_matching_file.write('exact match: ')
-            x_string=''
-            for xx in x:
-                x_string+=xx+', '
-
-            phrase_matching_file.write(x_string.rstrip(', '))
-            phrase_matching_file.write('\n')
-        substring_matches+=x
-    phrase_matching_file.write('\n')
-    phrase_matching_file.write('----------\n')
-    if len(substring_matches) ==0:
-        print('No exact match')
-        phrase_matching_file.write('No exact match\n')
-    else:
-        print('Exact matches:')
-        phrase_matching_file.write('Exact matches: \n')
-    return substring_matches
-
-
-#split based on spaces in the child story alignment string
 def similar_phrase_matching(child_story,robot_story, min_match_count=1):
     # TODO is there a minimum length of phrase to match?
 
@@ -642,12 +556,59 @@ def text_alignments(argv,query_dir,ref_dir):
 
 
 
+def ngrams_matching(text1, text2, n=3):
+    """ Find matching ngrams (i.e., phrases of N words) between two texts. We
+    use a default of N=3 because a smaller N (e.g. N=2) often retains too
+    little information to be considered actual phrase matching, while larger N
+    may encompass more information than would constitute a single phrase.
+    However, an appropriate N can be selected by the user.
+    """
+    # We count up matching ngrams from text1 and text2 to find how many ngrams
+    # matched between the two texts. If there are some ngrams that are present
+    # multiple times in the texts, they will be counted multiple times... so we
+    # first remove duplicate ngrams from the first text before counting
+    # matches.
+    #
+    # Just matching ngrams of length N won't account for any longer phrases that
+    # match. E.g., if there is a phrase of length N+1 that matches, it will
+    # appear as two adjacent ngrams that both match.
+    #
+    # This also doesn't account for ordering of phrases. As is, this will match
+    # ngrams from anywhere in one text with ngrams from anywhere in the other.
+    # If that's all that's needed, we're done. If more alignment and ordering is
+    # necessary in the phrase matching, then there's more to do... TODO
+    ngrams1 = set(ngrams(text1.split(), n))
+    ngrams2 = list(ngrams(text2.split(), n))
+
+    # Count occurrences of each ngram from text1 in text2.
+    matches = {}
+    for ng1 in ngrams1:
+        if ng1 in ngrams2:
+            if ng1 in matches:
+                matches[ng1] += 1
+            else:
+                matches[ng1] = 1
+    return matches
+
+
 def match_phrases(text1, text2, phrase_length):
     """ Find matching phrases of at least the specified number of words in the
     two provided strings.
     """
-    print "Finding exact phrase matches, min length {}...".format(phrase_length)
-    exact_matches = exact_phrase_matching(text1, text2, min_len=phrase_length)
+    # Use ngram matching to find exact matching phrases of length N. This will
+    # produce duplicate matches for any phrases longer than length N, but still
+    # generates the general results we're looking for, i.e., higher match scores
+    # for texts that have more phrases, and more longer phrases, in common.
+    # You can think of it like this:
+    #   - Score 1 for each matching phrase of length N.
+    #   - Score 2 for each matching phrase of length N+1.
+    #   - Score 3 for each matching phrase of length N+2.
+    #   - etc.
+    # The sum of these scores is the total match score. You get a higher score
+    # for more total matches, as well as for longer matching phrases.
+    print "Looking for exact phrase matches..."
+    exact_matches = ngrams_matching(text1, text2, n=phrase_length)
+    # Print the results of the matching.
     if len(exact_matches) < 1:
         print "No exact matches found."
     else:
@@ -655,7 +616,8 @@ def match_phrases(text1, text2, phrase_length):
         for m in exact_matches:
             print "\t{}".format(m)
 
-    print "Finding similar phrase matches..."
+    # Next, find similar matches using fuzzy string matching... TODO
+    print "Looking for similar phrase matches..."
     # TODO min length for similar phrase matching too?
     similar_matches = similar_phrase_matching(text1, text2)
     if len(similar_matches) < 1:
@@ -664,7 +626,6 @@ def match_phrases(text1, text2, phrase_length):
         print "Found {} similar matches!".format(len(similar_matches))
         for m in similar_matches:
             print "\t{}".format(m)
-
 
 
 def get_text(infile, case_sensitive, stopwords):
@@ -737,15 +698,20 @@ if __name__ == "__main__":
             stopwords += sw
 
     # Read in the text files to match against.
+    print "Going to match against phrases of length N={} from the following " +\
+           "files:".format(args.phrase_length)
     match = []
     for mf in args.match_files:
+        print "\t{}".format(os.path.basename(mf))
         match.append(get_text(mf, args.case_sensitive, stopwords))
+
 
     # For each text file to match, find the phrase matching score for each of
     # the text files to match against.
     for infile in args.infiles:
         # Open text file and read in text.
         filename = os.path.splitext(os.path.basename(infile))[0]
+        print "\nProcessing \"{}\"...".format(os.path.basename(infile))
         text = get_text(infile, args.case_sensitive, stopwords)
 
         # Do phrase matching.
