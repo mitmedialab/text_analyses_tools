@@ -85,10 +85,17 @@ def get_fuzzy_matches(text1, text2, n=4, threshold=80):
     user for their particular dataset. A higher value indicates more similar
     strings.
     """
-    ngrams1 = set(ngrams(text1.split(), n))
-    ngrams2 = list(ngrams(text2.split(), n))
 
-    # TODO lemmatize words first to make this fuzzier...
+    # Lemmatize words first to make this fuzzier (i.e., the word will match
+    # other tenses or cases of the same word).
+    lemmatizer = WordNetLemmatizer()
+    ngrams1 = set(ngrams(
+        [lemmatizer.lemmatize(word) for word in text1.split()],
+        n))
+    ngrams2 = list(ngrams(
+        [lemmatizer.lemmatize(word) for word in text2.split()],
+        n))
+
 
     # Count fuzzy-matched occurrences of each ngram from text1 in text2. Save
     # a nicely formatted list of the ngrams that matched for printing out later.
