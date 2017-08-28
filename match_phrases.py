@@ -116,13 +116,19 @@ def get_overall_similarity(text1, text2):
     """ Get the overall similarity between the two texts. """
     print "Computing overall similarity between texts..."
 
+    # Collect results into a list to return.
+    results = []
     # Get each text's length, the difference in lengths, and the length ratio.
     len1 = len(text1.split())
     len2 = len(text2.split())
     print "\tLength Text 1: {}\n\tLength Text 2: {}".format(len1, len2)
     print "\tLength difference: {}\n\tLength ratio: {}".format(
-        len1-len2,
+        len1 - len2,
         float(len1)/len2)
+    results.append(len1)
+    results.append(len2)
+    results.append(len1 - len2)
+    results.append(float(len1)/len2)
 
     # Compare the number of unique words in each story.
     uniq1 = len(set(text1.split()))
@@ -131,20 +137,30 @@ def get_overall_similarity(text1, text2):
         uniq1,
         uniq2)
     print "\tUnique words difference: {}\n\tUnique words ratio: {}".format(
-        (uniq1-uniq2),
+        uniq1 - uniq2,
         float(uniq1)/uniq2)
+    results.append(uniq1)
+    results.append(uniq2)
+    results.append(uniq1 - uniq2)
+    results.append(float(uniq1)/uniq2)
 
     # The fuzzywuzzy library has four different string comparison ratios that it
     # can calculate, so we get all of them.
-    print "\tSimple fuzzy ratio: {}".format(fuzzywuzzy.fuzz.ratio(
-        text1,
-        text2))
-    print "\tPartial fuzzy ratio: {}".format(
-        fuzzywuzzy.fuzz.partial_ratio(text1, text2))
-    print "\tToken sort fuzzy ratio: {}".format(
-        fuzzywuzzy.fuzz.token_sort_ratio(text1, text2))
-    print "\tToken set fuzzy ratio: {}".format(
-        fuzzywuzzy.fuzz.token_set_ratio(text1, text2))
+    simple = fuzzywuzzy.fuzz.ratio(text1, text2)
+    partial = fuzzywuzzy.fuzz.partial_ratio(text1, text2)
+    token_sort = fuzzywuzzy.fuzz.token_sort_ratio(text1, text2)
+    token_set = fuzzywuzzy.fuzz.token_set_ratio(text1, text2)
+    print "\tSimple fuzzy ratio: {}".format(simple)
+    print "\tPartial fuzzy ratio: {}".format(partial)
+    print "\tToken sort fuzzy ratio: {}".format(token_sort)
+    print "\tToken set fuzzy ratio: {}".format(token_set)
+    results.append(simple)
+    results.append(partial)
+    results.append(token_sort)
+    results.append(token_set)
+
+    # Return the list of match results.
+    return results
 
 
 def match_texts(text1, text2, num_words, fuzzy_n, fuzzy_threshold):
@@ -152,8 +168,9 @@ def match_texts(text1, text2, num_words, fuzzy_n, fuzzy_threshold):
     two provided strings. Compute some other text similarity scores, including
     several fuzzy string matching ratios.
     """
+    results = {}
     # Get overall similarity scores for the two texts.
-    get_overall_similarity(text1, text2)
+    results["overall"] = get_overall_similarity(text1, text2)
 
     # Use ngram matching to find exact matching phrases of length N. This will
     # produce duplicate matches for any phrases longer than length N, but still
@@ -169,6 +186,7 @@ def match_texts(text1, text2, num_words, fuzzy_n, fuzzy_threshold):
     print "Looking for exact phrase matches with N={}...".format(num_words)
     exact_matches = get_ngrams_matches(text1, text2, num_words=num_words)
     # Print the results of the matching.
+    results["exact"] = len(exact_matches)
     if len(exact_matches) < 1:
         print "\tNo exact matches found."
     else:
@@ -192,6 +210,8 @@ def match_texts(text1, text2, num_words, fuzzy_n, fuzzy_threshold):
         text2,
         num_words=fuzzy_n,
         threshold=fuzzy_threshold)
+    # Print the results of the matching.
+    results["similar"] = num_similar_matches
     if num_similar_matches < 1:
         print "\tNo similar matches found."
     else:
@@ -201,6 +221,8 @@ def match_texts(text1, text2, num_words, fuzzy_n, fuzzy_threshold):
         print "\t--------------------------------------------------------"
         for match in similar_matches:
             print match
+    # Return the dictionary of match results.
+    return results
 
 
 def get_text(text_file, case_sensitive, stopwords):
@@ -290,6 +312,7 @@ if __name__ == "__main__":
 
     # For each text file to match, find the phrase matching score for each of
     # the text files to match against.
+    RESULTS = []
     for infile in ARGS.infiles:
         # Open text file and read in text.
         filename = os.path.splitext(os.path.basename(infile))[0]
@@ -299,11 +322,38 @@ if __name__ == "__main__":
         for matchme in MATCH:
             print "\nComparing \"{}\" (text 1) to \"{}\" (text 2)...".format(
                 os.path.basename(infile), matchme)
-            match_texts(text, MATCH[matchme], ARGS.n, ARGS.fuzzy_n,
-                        ARGS.fuzzy_threshold)
-            # TODO get results back, print them out.
+            match_results = match_texts(text, MATCH[matchme], ARGS.n,
+                                        ARGS.fuzzy_n, ARGS.fuzzy_threshold)
+            match_results["file1"] = os.path.basename(infile)
+            match_results["file2"] = matchme
+            RESULTS.append(match_results)
 
-    # If there is an output file set, write the results to it. Otherwise, just
-    # print the results to stdout.
-    # TODO Output should be: "a log list of matches, and a csv with the number
-    # of matches for each processed file"
+    # If there is an output file set, write the tab-delimited results to it.
+    if ARGS.outfile:
+        with open(ARGS.outfile, "w") as outf:
+            # Print a header.
+            outf.write("file1\tfile2\tlength1\tlength2\tlength_diff\t" + \
+                       "length_ratio\tunique_words1\tunique_words2\t" + \
+                       "unique_diff\tunique_ratio\tfuzzy_simple_ratio\t" + \
+                        "fuzzy_partial_ratio\tfuzzy_token_sort_ratio\t" + \
+                        "fuzzy_token_set_ratio\tnum_exact_matches\t" + \
+                        "num_similar_matches")
+            # Print all the results.
+            for result in RESULTS:
+                outf.write(result["file1"] + "\t" + result["file2"] + "\t" \
+                    + "\t".join(map(str, result["overall"])) \
+                    + "\t{}\t{}".format(result["exact"], result["similar"]))
+
+    # If there is no output file specified, just print out the tab-delimited
+    # results.
+    else:
+        # Print a header.
+        print "\nfile1\tfile2\tlength1\tlength2\tlength_diff\tlength_ratio\t" + \
+            "unique_words1\tunique_words2\tunique_diff\tunique_ratio\t" + \
+            "fuzzy_simple_ratio\tfuzzy_partial_ratio\tfuzzy_token_sort_ratio\t" + \
+            "fuzzy_token_set_ratio\tnum_exact_matches\tnum_similar_matches"
+        # Print all the results.
+        for result in RESULTS:
+            print result["file1"] + "\t" + result["file2"] + "\t" \
+                + "\t".join(map(str, result["overall"])) \
+                + "\t{}\t{}".format(result["exact"], result["similar"])
