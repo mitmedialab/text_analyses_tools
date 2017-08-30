@@ -342,7 +342,8 @@ if __name__ == "__main__":
             for result in RESULTS:
                 outf.write(result["file1"] + "\t" + result["file2"] + "\t" \
                     + "\t".join(map(str, result["overall"])) \
-                    + "\t{}\t{}".format(result["exact"], result["similar"]))
+                    + "\t{}\t{}".format(result["exact"], result["similar"])
+                           + "\n")
 
     # If there is no output file specified, just print out the tab-delimited
     # results.
