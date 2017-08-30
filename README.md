@@ -7,7 +7,7 @@ results to a file. Perform either a case-sensitive or case-insensitive match.
 For exact phrase matches, the default number of words in a phrase is 3.
 
 For similar but not exact phrase matches, the default number of words in a
-phrase is 2.
+phrase is 4.
 
 ## Setup and dependencies
 
