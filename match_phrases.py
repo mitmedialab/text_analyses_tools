@@ -238,8 +238,11 @@ def get_text(text_file, case_sensitive, stopwords):
     # Tokenize (naively, just split on whitespace) and remove stopwords.
     # Remove extra whitespace via the split, and rejoin words with a space as
     # the delimiter back into a single string.
+    # Decode file contents into unicode first.
+    # TODO We currently assume UTF-8 encoding but that may not always be true.
+    remove = {ord(char): None for char in string.punctuation}
     contents = " ".join([word for word in \
-            contents.translate(None, string.punctuation).split() \
+            contents.decode('utf-8').translate(remove).split() \
             if word.lower() not in stopwords])
 
     # If we should be case-insensitive, make all words lowercase.
