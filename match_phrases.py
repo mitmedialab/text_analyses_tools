@@ -340,7 +340,7 @@ if __name__ == "__main__":
                        "unique_diff\tunique_ratio\tfuzzy_simple_ratio\t" + \
                         "fuzzy_partial_ratio\tfuzzy_token_sort_ratio\t" + \
                         "fuzzy_token_set_ratio\tnum_exact_matches\t" + \
-                        "num_similar_matches")
+                        "num_similar_matches\n")
             # Print all the results.
             for result in RESULTS:
                 outf.write(result["file1"] + "\t" + result["file2"] + "\t" \
