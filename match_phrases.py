@@ -35,6 +35,7 @@ import fuzzywuzzy.fuzz  # For fuzzy string matching.
 import nltk.corpus  # To get list of stopwords.
 from nltk.util import ngrams  # To get ngrams from texts.
 from nltk.stem.wordnet import WordNetLemmatizer  # To lemmatize words.
+from sklearn.feature_extraction.text import TfidfVectorizer  # Text to vectors.
 
 
 def get_ngrams_matches(text1, text2, num_words=3):
@@ -111,6 +112,27 @@ def get_fuzzy_matches(text1, text2, num_words=4, threshold=80):
     return matches, matches_to_print
 
 
+def lemmatize(words):
+    """ Lemmatize words to normalize. Assumes punctuation has already been
+    removed and that the text is already been put in lowercase if desired.
+    This function is necessary because the TfidfVectorizer used later requires
+    a callable for its tokenizer argument.
+    """
+    lemmatizer = WordNetLemmatizer()
+    return [lemmatizer.lemmatize(word) for word in words.split()]
+
+
+def get_cosine_similarity(text1, text2):
+    """ Get the cosine similarity between the two texts. """
+    # Turn text into vectors of term frequency, and get the tf-idf matrix.
+    tfidf_vec = TfidfVectorizer(tokenizer=lemmatize, stop_words='english')
+    tfidf = tfidf_vec.fit_transform([text1, text2])
+    # Get pairwise similarity matrix.
+    cos_similarity_matrix = (tfidf * tfidf.T).toarray()
+    # Return the cosine similarity.
+    return cos_similarity_matrix[0][1]
+
+
 def get_overall_similarity(text1, text2):
     """ Get the overall similarity between the two texts. """
     print "Computing overall similarity between texts..."
@@ -157,6 +179,11 @@ def get_overall_similarity(text1, text2):
     results.append(partial)
     results.append(token_sort)
     results.append(token_set)
+
+    # Get cosine similarity between the texts.
+    cos_sim = get_cosine_similarity(text1, text2)
+    print "\tCosine similarity: {}".format(cos_sim)
+    results.append(cos_sim)
 
     # Return the list of match results.
     return results
@@ -340,8 +367,8 @@ if __name__ == "__main__":
                        "length_ratio\tunique_words1\tunique_words2\t" + \
                        "unique_diff\tunique_ratio\tfuzzy_simple_ratio\t" + \
                         "fuzzy_partial_ratio\tfuzzy_token_sort_ratio\t" + \
-                        "fuzzy_token_set_ratio\tnum_exact_matches\t" + \
-                        "num_similar_matches\n")
+                        "fuzzy_token_set_ratio\tcosine_similarity\t" + \
+                        "num_exact_matches\tnum_similar_matches\n")
             # Print all the results.
             for result in RESULTS:
                 outf.write(result["file1"] + "\t" + result["file2"] + "\t" \

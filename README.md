@@ -67,6 +67,7 @@ A couple overall text similarity metrics are computed first. These include:
 - Number of unique words in each text
 - Several ratios from a fuzzy string matching library ([details
   here](http://chairnerd.seatgeek.com/fuzzywuzzy-fuzzy-string-matching-in-python/)).
+- Cosine similarity between the texts
 
 ### Matching details
 
