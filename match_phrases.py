@@ -28,13 +28,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import os # For getting basenames and file extensions.
-import string # To use the punctuation list.
-import argparse # For getting command line args.
-import fuzzywuzzy.fuzz # For fuzzy string matching.
-import nltk.corpus # To get list of stopwords.
-from nltk.util import ngrams # To get ngrams from texts.
-from nltk.stem.wordnet import WordNetLemmatizer # To lemmatize words.
+import os  # For getting basenames and file extensions.
+import string  # To use the punctuation list.
+import argparse  # For getting command line args.
+import fuzzywuzzy.fuzz  # For fuzzy string matching.
+import nltk.corpus  # To get list of stopwords.
+from nltk.util import ngrams  # To get ngrams from texts.
+from nltk.stem.wordnet import WordNetLemmatizer  # To lemmatize words.
 
 
 def get_ngrams_matches(text1, text2, num_words=3):
@@ -85,7 +85,6 @@ def get_fuzzy_matches(text1, text2, num_words=4, threshold=80):
     user for their particular dataset. A higher value indicates more similar
     strings.
     """
-
     # Lemmatize words first to make this fuzzier (i.e., the word will match
     # other tenses or cases of the same word).
     lemmatizer = WordNetLemmatizer()
@@ -96,9 +95,9 @@ def get_fuzzy_matches(text1, text2, num_words=4, threshold=80):
         [lemmatizer.lemmatize(word) for word in text2.split()],
         num_words))
 
-
     # Count fuzzy-matched occurrences of each ngram from text1 in text2. Save
-    # a nicely formatted list of the ngrams that matched for printing out later.
+    # a nicely formatted list of the ngrams that matched for printing out
+    # later.
     matches = 0
     matches_to_print = []
 
@@ -242,8 +241,8 @@ def get_text(text_file, case_sensitive, stopwords):
     # TODO We currently assume UTF-8 encoding but that may not always be true.
     remove = {ord(char): None for char in string.punctuation}
     contents = " ".join([word for word in \
-            contents.decode('utf-8').translate(remove).split() \
-            if word.lower() not in stopwords])
+        contents.decode('utf-8').translate(remove).split() \
+        if word.lower() not in stopwords])
 
     # If we should be case-insensitive, make all words lowercase.
     if not case_sensitive:
@@ -302,7 +301,8 @@ if __name__ == "__main__":
                                 for w in CUSTOM_STOPWORDS]
             if not ARGS.case_sensitive:
                 CUSTOM_STOPWORDS = [w.lower() for w in CUSTOM_STOPWORDS]
-            print "Custom stopwords: {}\nAdding to stopword list...".format(CUSTOM_STOPWORDS)
+            print "Custom stopwords: {}\nAdding to stopword list...".format(
+                CUSTOM_STOPWORDS)
             STOPWORDS += CUSTOM_STOPWORDS
 
     # Read in the text files to match against.
@@ -310,18 +310,19 @@ if __name__ == "__main__":
     MATCH = {}
     for mf in ARGS.match_files:
         print "\t{}".format(os.path.basename(mf))
-        MATCH[os.path.basename(mf)] = get_text(mf, ARGS.case_sensitive, STOPWORDS)
-
+        MATCH[os.path.basename(mf)] = get_text(mf, ARGS.case_sensitive,
+                                               STOPWORDS)
 
     # For each text file to match, find the phrase matching score for each of
-    # the text files to match against.
+    # the text files to match against, along with several other text similarity
+    # metrics.
     RESULTS = []
     for infile in ARGS.infiles:
         # Open text file and read in text.
         filename = os.path.splitext(os.path.basename(infile))[0]
         text = get_text(infile, ARGS.case_sensitive, STOPWORDS)
 
-        # Do phrase matching.
+        # Do text matching.
         for matchme in MATCH:
             print "\nComparing \"{}\" (text 1) to \"{}\" (text 2)...".format(
                 os.path.basename(infile), matchme)

@@ -53,6 +53,12 @@ optional arguments:
 - `-c, --case-sensitive`: Do case-sensitive phrase matching. By default, the
   phrase matching is case-insensitive.
 
+
+You can run the script with the example files as follows:
+
+`python match_phrases.py -m examples/match_example_A.txt
+examples/to_match_example_0*`
+
 ### Overall text similarity
 
 A couple overall text similarity metrics are computed first. These include:
