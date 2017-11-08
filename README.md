@@ -15,12 +15,14 @@ phrase is 4.
 
 The following libraries are required (versions used for developing and testing
 listed in parantheses). You can `port install` or `pip install` or whatever
-depending on your preference for python library management.
+depending on your preference for python library management. There's a
+`requirements.txt` file that lists these dependencies in case you want to `pip
+install -r requirements.txt`.
 
-- swalign (v0.3.4)
 - fuzzywuzzy (may print a warning suggesting you optionally install
   python-Levenshtein, v0.12.0) (v.0.15.1)
 - nltk (3.0.4\_0)
+- sklearn (0.0)
 
 ### Version notes
 
@@ -31,7 +33,9 @@ This program was developed and tested with:
 
 ## Usage
 
-`match_phrases.py [-h] [-s, --stopwords STOPWORDS] -m, --match
+### As a script, if you have text files you want matched
+
+`python get_similarity.py [-h] [-s, --stopwords STOPWORDS] -m, --match
                         MATCH_FILES [-o, --outfile OUTFILE]
                         [-c, --case-sensitive]
                         infiles [infiles ...]`
@@ -53,11 +57,17 @@ optional arguments:
 - `-c, --case-sensitive`: Do case-sensitive phrase matching. By default, the
   phrase matching is case-insensitive.
 
-
 You can run the script with the example files as follows:
 
-`python match_phrases.py -m examples/match_example_A.txt
+`python get_similarity.py -m examples/match_example_A.txt
 examples/to_match_example_0*`
+
+### As a library, if you want to call the similarity functions
+
+`import text_similarity_tools`
+
+See `get_similarity.py` for example usage.
+
 
 ### Overall text similarity
 
