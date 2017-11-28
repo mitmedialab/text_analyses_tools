@@ -36,8 +36,8 @@ from nltk.stem.wordnet import WordNetLemmatizer  # To lemmatize words.
 from sklearn.feature_extraction.text import TfidfVectorizer  # Text to vectors.
 
 
-# List of stopwords we will use.
-STOPWORDS = []
+# List of stopwords we will use. Defaults to the set of English stopwords.
+STOPWORDS = nltk.corpus.stopwords.words("english")
 
 
 def get_ngrams_matches(text1, text2, num_words=3):
@@ -88,6 +88,9 @@ def get_fuzzy_matches(text1, text2, num_words=4, threshold=80):
     user for their particular dataset. A higher value indicates more similar
     strings.
     """
+    # Make sure that num_words and threshold are ints...
+    num_words = int(num_words)
+    threshold = int(threshold)
     # Lemmatize words first to make this fuzzier (i.e., the word will match
     # other tenses or cases of the same word).
     lemmatizer = WordNetLemmatizer()
@@ -288,7 +291,6 @@ def set_stopwords(custom_stopwords_file, case_sensitive):
     # remove any punctuation and change to lowercase unless the case-sensitive
     # flag is set.
     global STOPWORDS
-    STOPWORDS = nltk.corpus.stopwords.words("english")
     if custom_stopwords_file:
         with open(custom_stopwords_file, "r") as custom_words:
             print "Reading custom stopword list..."
