@@ -47,7 +47,10 @@ if __name__ == "__main__":
                                      phrases in each of a provided list of text
                                      files, and print the results.""")
     PARSER.add_argument("-s, --stopwords", type=str, dest="stopwords",
-                        help="""Text file containing custom stopwords, one per
+                        help="""Text file containing custom stopwords to be APPENDED to default stopwords, one per
+                        line""")
+    PARSER.add_argument("-S, --stopwords-force", type=str, dest="stopwords_force",
+                        help="""Text file containing custom stopwords to force REPLACE default stopwords, one per
                         line""")
     PARSER.add_argument("-m, --match", required=True, action="append",
                         dest="match_files", help="""Text file to match against.
@@ -74,10 +77,13 @@ if __name__ == "__main__":
 
     # Open stopword file and get the list of custom stopwords. We remove any
     # punctuation and change to lowercase unless the case-sensitive flag is
-    # set.
+    # set. Append flag is set or unset based on the argument option.
     if ARGS.stopwords:
         text_similarity_tools.set_stopwords(ARGS.stopwords,
-                                            ARGS.case_sensitive)
+                                            ARGS.case_sensitive, True)
+    if ARGS.stopwords_force:
+        text_similarity_tools.set_stopwords(ARGS.stopwords_force,
+                                            ARGS.case_sensitive, False)
 
     # Read in the text files to match against.
     print "Going to match against the following files:"

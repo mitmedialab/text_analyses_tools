@@ -34,11 +34,11 @@ import nltk.corpus  # To get list of stopwords.
 from nltk.util import ngrams  # To get ngrams from texts.
 from nltk.stem.wordnet import WordNetLemmatizer  # To lemmatize words.
 from sklearn.feature_extraction.text import TfidfVectorizer  # Text to vectors.
+import re
 
 
 # List of stopwords we will use. Defaults to the set of English stopwords.
 STOPWORDS = nltk.corpus.stopwords.words("english")
-
 
 def get_ngrams_matches(text1, text2, num_words=3):
     """ Find matching ngrams (i.e., phrases of N words) between two texts. We
@@ -269,25 +269,27 @@ def get_text(text_file, case_sensitive):
     with open(text_file, "r") as fil:
         # Read the file contents.
         contents = fil.read()
+        print contents
 
-    # Tokenize (naively, just split on whitespace) and remove stopwords.
-    # Remove extra whitespace via the split, and rejoin words with a space as
-    # the delimiter back into a single string.
-    # Decode file contents into unicode first.
+    # Decode file contents into unicode and Remove non-letters
     # TODO We currently assume UTF-8 encoding but that may not always be true.
-    remove = {ord(char): None for char in string.punctuation}
-    contents = " ".join([word for word in \
-        contents.decode('utf-8').translate(remove).split() \
-        if word.lower() not in STOPWORDS])
+    contents = contents.decode('utf-8')
+    contents = re.sub("[^a-zA-Z]", " ", contents)
 
+    print contents
     # If we should be case-insensitive, make all words lowercase.
     if not case_sensitive:
         contents = contents.lower()
 
-    return contents
+    contents = contents.split()
+
+    contents = [w for w in contents if w.lower() not in STOPWORDS]
+    print contents
+
+    return " ".join(contents)
 
 
-def set_stopwords(custom_stopwords_file, case_sensitive):
+def set_stopwords(custom_stopwords_file, case_sensitive, is_append):
     """ Use the default English nltk stopwords. If custom stopwords are
     specified, add those to the stopword list.
     """
@@ -298,11 +300,17 @@ def set_stopwords(custom_stopwords_file, case_sensitive):
     if custom_stopwords_file:
         with open(custom_stopwords_file, "r") as custom_words:
             print "Reading custom stopword list..."
-            custom_stopwords = custom_words.readlines()
-            custom_stopwords = [w.strip().translate(None, string.punctuation)
-                                for w in custom_stopwords]
+            custom_stopwords = custom_words.read().splitlines()
+            #custom_stopwords = [w.strip().translate(None, string.punctuation)
+            #                    for w in custom_stopwords]
             if not case_sensitive:
                 custom_stopwords = [w.lower() for w in custom_stopwords]
-            print "Custom stopwords: {}\nAdding to stopword list...".format(
-                custom_stopwords)
-            STOPWORDS += custom_stopwords
+            if is_append:
+                print "Custom stopwords: {}\nAdding to stopword list...\n".format(
+                    custom_stopwords)
+                STOPWORDS += custom_stopwords
+                STOPWORDS = set(STOPWORDS)
+            else:
+                print "Custom stopwords: {}\nReplacing stopword list...\n".format(
+                    custom_stopwords)
+                STOPWORDS = set(custom_stopwords)
