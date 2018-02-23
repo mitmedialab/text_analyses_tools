@@ -265,6 +265,8 @@ def get_text(text_file, case_sensitive):
     extraneous whitespace, and make it all lowercase if the case-sensitive flag
     is not set. Return a string containing the processed text.
     """
+    # TODO Should lemmatize based on pos-tagging before removing stopwords.
+
     # Open the file for reading.
     with open(text_file, "r") as fil:
         # Read the file contents.
