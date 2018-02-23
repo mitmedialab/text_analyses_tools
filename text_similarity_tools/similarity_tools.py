@@ -93,13 +93,17 @@ def get_fuzzy_matches(text1, text2, num_words=4, threshold=80):
     threshold = int(threshold)
     # Lemmatize words first to make this fuzzier (i.e., the word will match
     # other tenses or cases of the same word).
+    
+    # TODO: Lemmatize should happen before stopword removal based on pos-tagging. For now,
+    # since lemmatize by default assumes the word is a noun, run with the verb option as well.
     lemmatizer = WordNetLemmatizer()
-    ngrams1 = set(ngrams(
-        [lemmatizer.lemmatize(word) for word in text1.split()],
-        num_words))
-    ngrams2 = list(ngrams(
-        [lemmatizer.lemmatize(word) for word in text2.split()],
-        num_words))
+    words =  [lemmatizer.lemmatize(word,'n') for word in text1.split()]
+    words =  [lemmatizer.lemmatize(word,'v') for word in words]
+    ngrams1 = set(ngrams(words,num_words))
+    
+    words =  [lemmatizer.lemmatize(word,'n') for word in text2.split()]
+    words =  [lemmatizer.lemmatize(word,'v') for word in words]
+    ngrams2 = set(ngrams(words,num_words))
 
     # Count fuzzy-matched occurrences of each ngram from text1 in text2. Save
     # a nicely formatted list of the ngrams that matched for printing out
@@ -123,8 +127,13 @@ def lemmatize(words):
     This function is necessary because the TfidfVectorizer used later requires
     a callable for its tokenizer argument.
     """
+    # TODO: Lemmatize should happen before stopword removal based on pos-tagging. For now,
+    # since lemmatize by default assumes the word is a noun, run with the verb option as well.
     lemmatizer = WordNetLemmatizer()
-    return [lemmatizer.lemmatize(word) for word in words.split()]
+    w = [lemmatizer.lemmatize(word, 'n') for word in words.split()]
+    w = [lemmatizer.lemmatize(word, 'v') for word in w]
+
+    return w
 
 
 def get_cosine_similarity(text1, text2):
