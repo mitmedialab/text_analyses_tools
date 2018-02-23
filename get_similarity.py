@@ -117,7 +117,7 @@ if __name__ == "__main__":
             # Print a header.
             outf.write("file1\tfile2\tlength1\tlength2\tlength_diff\t" + \
                        "length_ratio\tunique_words1\tunique_words2\t" + \
-                       "unique_diff\tunique_ratio\tfuzzy_simple_ratio\t" + \
+                       "unique_diff\tunique_ratio\tunique_overlap\tfuzzy_simple_ratio\t" + \
                         "fuzzy_partial_ratio\tfuzzy_token_sort_ratio\t" + \
                         "fuzzy_token_set_ratio\tcosine_similarity\t" + \
                         "num_exact_matches\tnum_similar_matches\n")
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     else:
         # Print a header.
         print "\nfile1\tfile2\tlength1\tlength2\tlength_diff\tlength_ratio\t" + \
-            "unique_words1\tunique_words2\tunique_diff\tunique_ratio\t" + \
+            "unique_words1\tunique_words2\tunique_diff\tunique_ratio\tunique_overlap\t" + \
             "fuzzy_simple_ratio\tfuzzy_partial_ratio\tfuzzy_token_sort_ratio\t" + \
             "fuzzy_token_set_ratio\tcosine_similarity\tnum_exact_matches\t" + \
             "num_similar_matches"

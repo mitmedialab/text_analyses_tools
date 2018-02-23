@@ -159,16 +159,20 @@ def get_overall_similarity(text1, text2):
     # Compare the number of unique words in each story.
     uniq1 = len(set(text1.split()))
     uniq2 = len(set(text2.split()))
+    overlap = [w for w in set(text1.split()) if w in set(text2.split())]
     print "\tUnique words Text 1: {}\n\tUnique words Text 2: {}".format(
         uniq1,
         uniq2)
     print "\tUnique words difference: {}\n\tUnique words ratio: {}".format(
         uniq1 - uniq2,
         float(uniq1)/uniq2)
+    print "\tUnique words overlap: {}".format(
+            len(overlap))
     results.append(uniq1)
     results.append(uniq2)
     results.append(uniq1 - uniq2)
     results.append(float(uniq1)/uniq2)
+    results.append(len(overlap))
 
     # The fuzzywuzzy library has four different string comparison ratios that it
     # can calculate, so we get all of them.
