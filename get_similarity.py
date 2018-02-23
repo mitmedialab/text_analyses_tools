@@ -58,6 +58,10 @@ if __name__ == "__main__":
                         match against multiple files.""")
     PARSER.add_argument("-o, --outfile", dest="outfile", help="""A file to
                         write the results to (otherwise printed to stdout).""")
+    PARSER.add_argument("-d, --no-header", dest="no_header",
+                        action="store_true", default=False, help="""Do not
+                        print header in outfile. Default is print header. Only 
+                        applied if outfile set.""")
     PARSER.add_argument("-c, --case-sensitive", dest="case_sensitive",
                         action="store_true", default=False, help="""Do
                         case-sensitive phrase matching. By default, the phrase
@@ -117,16 +121,17 @@ if __name__ == "__main__":
             match_results["file2"] = matchme
             RESULTS.append(match_results)
 
-    # If there is an output file set, write the tab-delimited results to it.
+    # If there is an output file set, write the tab-delimited results to it. Append to file if exists
     if ARGS.outfile:
-        with open(ARGS.outfile, "w") as outf:
+        with open(ARGS.outfile, "a") as outf:
             # Print a header.
-            outf.write("file1\tfile2\tlength1\tlength2\tlength_diff\t" + \
-                       "length_ratio\tunique_words1\tunique_words2\t" + \
-                       "unique_diff\tunique_ratio\tunique_overlap\tfuzzy_simple_ratio\t" + \
-                        "fuzzy_partial_ratio\tfuzzy_token_sort_ratio\t" + \
-                        "fuzzy_token_set_ratio\tcosine_similarity\t" + \
-                        "num_exact_matches\tnum_similar_matches\n")
+            if not ARGS.no_header:
+                outf.write("file1\tfile2\tlength1\tlength2\tlength_diff\t" + \
+                           "length_ratio\tunique_words1\tunique_words2\t" + \
+                           "unique_diff\tunique_ratio\tunique_overlap\tfuzzy_simple_ratio\t" + \
+                            "fuzzy_partial_ratio\tfuzzy_token_sort_ratio\t" + \
+                            "fuzzy_token_set_ratio\tcosine_similarity\t" + \
+                            "num_exact_matches\tnum_similar_matches\n")
             # Print all the results.
             for result in RESULTS:
                 outf.write(result["file1"] + "\t" + result["file2"] + "\t" \
